@@ -6,9 +6,9 @@
 >
 > `make verify` sẽ fail nếu còn placeholder chưa điền. Đó là cố ý.
 
-**Họ Tên:** _<Họ Tên>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Nguyễn Minh Hiếu
+**Cohort:** A20-K4
+**Ngày submit:** 2026-08-21
 
 ---
 
@@ -16,23 +16,22 @@
 
 > Từ `make probe`. Paste output hoặc điền tay.
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 / Apple Metal / Vulkan / CPU only>_
-- **llama.cpp asset đã tải:** _<vd: llama-b10488-bin-macos-arm64.tar.gz>_
-- **Model đã dùng:** _<Gemma 4 E2B / Qwen3.5 0.8B>_ (`LAB_MODEL=`_<gemma4-e2b / qwen35-0.8b>_)
-- **Quantization:** _<primary>_ + _<compare>_ (từ `models/active.json`)
+- **OS:** Linux (Ubuntu WSL2 trên Windows 11)
+- **CPU:** 11th Gen Intel(R) Core(TM) i5-11400H @ 2.70GHz
+- **Cores:** 6 physical / 12 logical
+- **CPU extensions:** AVX2, AVX-512
+- **RAM:** 7.7 GB
+- **Accelerator:** NVIDIA GeForce RTX 3050 Laptop GPU (4096 MiB)
+- **llama.cpp asset đã tải:** llama-b10488-bin-ubuntu-vulkan-x64.tar.gz
+- **Model đã dùng:** Qwen3.5 0.8B (`LAB_MODEL=qwen35-0.8b`)
+- **Quantization:** Q4_K_M + UD-Q2_K_XL (từ `models/active.json`)
 
-**Chạy ở đâu:** _<laptop của tôi / Colab / Kaggle>_
-_(Nếu dùng cloud fallback: nói rõ vì sao — RAM < 8 GB, setup fail, v.v. Không mất điểm.)_
+**Chạy ở đâu:** laptop của mình
 
 **Setup story** (≤ 80 chữ): điều gì cần thay đổi để lab chạy trên máy bạn? Có bước
 nào fail rồi phải workaround không?
 
-_Answer here._
+Mình dùng model Qwen3.5 0.8B để vừa vặn với 8GB RAM của laptop. Do chạy qua WSL2 (Ubuntu), lúc đầu `make setup` bị lỗi không tìm thấy binary Python vì venv cũ được tạo từ Windows nên cần xóa đi tạo lại `.venv` chuẩn Linux. Bên cạnh đó cần thêm exclusion cho thư mục lab trong Windows Defender để tránh bị quét file GGUF liên tục gây giật lag I/O (sẽ xóa thư mục local sau này).
 
 ---
 
@@ -42,14 +41,14 @@ _Answer here._
 
 | Quantization | Size (GB) | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode (tok/s) |
 |---|--:|--:|--:|--:|--:|--:|
-| UD-Q4_K_XL | | | | | | |
-| UD-Q2_K_XL | | | | | | |
+| Q4_K_M | 0.50 | 11224 | 233 / 277 | 36.5 / 39.7 | 2490 / 2772 / 2772 | 27.4 |
+| UD-Q2_K_XL | 0.39 | 9678 | 285 / 333 | 30.7 / 33.1 | 2243 / 2392 / 2392 | 32.5 |
 
 **Quan sát** (≤ 60 chữ): 2-bit nhanh hơn bao nhiêu, và **có đáng không**? Bạn đã thử
 hỏi cùng một câu trên cả hai (`make serve` vs `python labs/02-serve/serve.py --compare`)
 chưa? Chất lượng khác nhau thế nào?
 
-_Answer here._
+Bản UD-Q2_K_XL decode nhanh hơn tầm 19% (32.5 so với 27.4 tok/s) và nhẹ hơn 110MB. Nhưng khi test thử câu hỏi dài, bản 2-bit của model 0.8B trả lời lủng củng và lặp từ thấy rõ. Máy có 8GB RAM nên em có thể chạy bản 4-bit Q4_K_M.
 
 ---
 
@@ -59,22 +58,22 @@ _Answer here._
 
 | Users | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Eff. concurrency | Failures |
 |--:|--:|--:|--:|--:|--:|--:|
-| 10 | | | | | | |
-| 50 | | | | | | |
+| 10 | 0.50 | 17000 | 24000 | 26000 | 8.6 | 0.0% |
+| 50 | 0.43 | 23000 | 52000 | 53000 | 11.1 | 0.0% |
 
-- **Offered load tăng 5×, throughput thực tăng:** _<X.XX>×_
-- **P95 tăng:** _<X.XX>×_
-- **Effective concurrency ở 50 users:** _<số>_ so với `--parallel` = _<số>_ slots
+- **Offered load tăng 5×, throughput thực tăng:** 0.87×
+- **P95 tăng:** 2.17×
+- **Effective concurrency ở 50 users:** 11.1 so với `--parallel` = 4 slots
 
 **Peak `llamacpp:n_busy_slots_per_decode`** (từ `make metrics` khi `make load-50` đang
-chạy): _<số>_ / _<slots>_ slots
+chạy): 3.84 / 4 slots
 
 **Saturation reading** (≤ 80 chữ): server của bạn bão hoà ở đâu, và **bằng chứng nào**
 thuyết phục bạn? Nếu P95 tăng nhanh hơn RPS thì phần latency thêm đó là queue time hay
 compute time — bạn biết bằng cách nào? Nếu bạn phải nâng goodput@SLO, bạn sẽ đổi knob
 nào **trước**, và vì sao knob đó?
 
-_Answer here._
+Server nghẽn cứng ở 50 users: tăng tải 5x nhưng throughput thực tế đi ngang (~0.43-0.50 RPS), còn P95 vọt từ 24s lên 52s. Độ trễ tăng này là do Queue Time (46 request bị deferred vì concurrency 11.1 vượt trần 4 slots). Để cứu Goodput@SLO, em sẽ tăng `--parallel` lên 6 hoặc 8 để mở thêm slot cho Continuous Batching nuốt bớt hàng đợi.
 
 ---
 
@@ -84,23 +83,23 @@ _Answer here._
 
 | Day | Piece | Real hay stub? |
 |---|---|---|
-| N16 Cloud/IaC | | |
-| N17 Data pipeline | | |
-| N18 Lakehouse | | |
-| N19 Vector + features | | |
+| N16 Cloud/IaC | Cloud IaC provisioning | stub |
+| N17 Data pipeline | Ingestion & ETL | stub |
+| N18 Lakehouse | Storage & Lakehouse | stub |
+| N19 Vector + features | Vector search / Embed | stub |
 | N20 Serving | `llama-server` | real |
 
 **Latency split** (mean của 3 query, từ output của `pipeline.py`):
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llm: _<ms>_
-- **stage chiếm nhiều nhất:** _<stage>_ (_<%>_ của total)
+- embed: 0.1 ms
+- retrieve: 0.2 ms
+- llm: 10100.1 ms
+- **stage chiếm nhiều nhất:** llm (100.0% của total)
 
 **Reflection** (≤ 60 chữ): bottleneck ở đâu? Có khớp với kỳ vọng của bạn không? Nếu
 phải giảm latency của pipeline này 2×, bạn sẽ tấn công vào đâu?
 
-_Answer here._
+Nghẽn gần như 100% ở stage LLM (hơn 10s) vì bước decode bị giới hạn bởi tốc độ đọc RAM. Muốn cắt giảm độ trễ 2x thì phải đánh thẳng vào LLM: bật Prompt Caching cho mớ context tài liệu tĩnh và áp dụng Speculative Decoding hoặc siết bớt `max_tokens`.
 
 ---
 
@@ -110,22 +109,21 @@ _Answer here._
 > một before/after thật (`benchmarks/01-tuning-tg128.md`). Đổi quantization,
 > `LAB_N_CTX`, hay `--parallel` rồi đo lại cũng được.
 
-**Change:** _<vd: hạ -t từ 16 xuống 8; vd: đổi sang UD-Q2_K_XL; vd: --parallel 4 → 8>_
+**Change:** Tối ưu hóa số luồng tính toán từ mặc định `-t 6` (6 physical cores) xuống `-t 3` (`LAB_N_THREADS=3`)
 
 ```
-before:  <số + đơn vị>
-after:   <số + đơn vị>
-speedup: <X.Y>×
+before:  13.7 tok/s (tại -t 6 mặc định)
+after:   22.4 tok/s (tại -t 3 tối ưu)
+speedup: 1.63×
 ```
 
 **Tại sao nó work** (1–2 đoạn — đây là phần grader đọc kỹ nhất):
 
-_Giải thích như đang nói với bạn ngồi cạnh. Bám vào **cơ chế**, không phải "vibes":
-memory bandwidth? vector width? cache residency? scheduling? queueing? Nếu kết quả
-**khác** với kỳ vọng từ deck — nói rõ, và giải thích vì sao. Grader thưởng điểm cho
-lập luận đúng về một kết quả bất ngờ, hơn là một con số đẹp không được giải thích._
+Ban đầu cứ tưởng bật đủ 6 core vật lý (`-t 6`) trên con chip i5-11400H sẽ cho max speed, ai ngờ sweep ra `-t 3` mới là điểm ngon nhất (22.4 tok/s so với 13.7 tok/s của `-t 6`, vọt lên 1.63 lần). Ép lên 12 hay 24 luồng thì tụt thảm hại chỉ còn 3.4 tok/s.
 
-_Answer here._
+Cơ chế ở đây là bài toán cân bằng giữa băng thông bộ nhớ và chi phí đồng bộ luồng trong WSL2:
+- Để 3 luồng, CPU tận dụng vừa vặn băng thông RAM và dung lượng cache L3, dữ liệu luân chuyển mượt mà không bị nghẽn bus.
+- Khi ép chạy 6 hoặc 12 luồng, các thread liên tục phải đứng chờ nhau ở barrier đồng bộ sau mỗi phép nhân ma trận (matrix tiles). Lúc này CPU tốn rất nhiều chu kỳ context-switch và bị tranh chấp cache (cache thrashing) thay vì tính toán thật. Thành ra hạ về 3 luồng vừa nhẹ máy vừa giúp throughput tăng vọt 63% mà chả cần đụng vào compiler.
 
 ---
 
@@ -134,27 +132,28 @@ _Answer here._
 > Bỏ trống nếu không làm. Xem `bonus/README.md`. Đừng làm hết — **một** finding sâu
 > ăn điểm hơn năm bảng nông.
 
-**Đã làm:** _<B1 build-compare / B2 sweep nào / B4 challenge nào / B5 lựa chọn nào>_
+**Đã làm:** B2 (Context-length sweep - `make sweep-ctx`)
 
 **Numbers:**
 
 ```
-before:  <số>
-after:   <số>
-speedup: <X.Y>×
+before:  1826.7 ms TTFT (tại 256 tokens context)
+after:   26172.5 ms TTFT (tại 4096 tokens context)
+speedup: 14.33× latency growth (0.90× so với linear scaling)
 ```
 
 **Điều này nói lên gì mà deck chưa nói:**
 
-_(để trống nếu bạn không làm phần này)_
+Lý thuyết thường nhấn mạnh vào chi phí Attention bậc hai $O(N^2)$ khi xử lý context dài. Tuy nhiên kết quả đo thực tế từ 256 đến 4096 tokens lại cho thấy TTFT vẫn tăng gần như tuyến tính (khoảng 0.90x), vì ở tầm context này với model 0.8B thì các phép chiếu Linear và MLP $O(N)$ vẫn chiếm phần lớn khối lượng tính toán.
+
+Cái thấy rõ nhất là chi phí thời gian thực tế: prefill 4k tokens mất tận hơn 26 giây mới nhả token đầu. Thành ra đi làm RAG thực tế, giới hạn prompt không phải là context window nhét vừa bao nhiêu tokens, mà là user có kiên nhẫn ngồi đợi 26s hay không. Bắt buộc phải có Prompt Caching với Chunked Prefill nếu muốn mở rộng context.
 
 ---
 
 ## 7. Điều làm bạn ngạc nhiên nhất  *(optional)*
 
-_(1–2 câu. Không bắt buộc, nhưng grader đọc hết.)_
+Bất ngờ nhất là việc tăng số thread từ 3 lên 6 hoặc 12 (bật hết core vật lý và siêu phân luồng) lại làm tốc độ decode sụt dốc không phanh từ 22.4 tok/s xuống còn 3.4 tok/s (chậm đi hơn 6.5 lần), ngược hẳn với suy nghĩ ban đầu là cứ nhiều core thì sẽ chạy nhanh hơn.
 
-_(để trống nếu bạn không làm phần này)_
 
 ---
 
